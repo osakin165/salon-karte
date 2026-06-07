@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Salon de SOAN — 電子カルテ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#00897b;--green-d:#00695c;--green-l:#e0f2f1;--gray:#f5f5f5;--border:#e0e0e0;--text:#212121;--sub:#757575}
+body{font-family:-apple-system,'Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;background:#f0f0f0;color:var(--text);font-size:13px;-webkit-tap-highlight-color:transparent}
+
+/* ── TOP BAR ── */
+.topbar{background:var(--green);color:#fff;height:50px;display:flex;align-items:center;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:.04em}
+.topbar-sep{flex:1}
+.tb{padding:7px 13px;border-radius:20px;border:1.5px solid rgba(255,255,255,.6);background:transparent;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:600}
+.tb:active{background:rgba(255,255,255,.2)}
+.tb.solid{background:#fff;color:var(--green);border-color:#fff}
+.tb.sync{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.5)}
+
+/* ── CUSTOMER BAR ── */
+.custbar{background:#fff;border-bottom:1px solid var(--border);height:44px;display:flex;align-items:center;padding:0 12px;gap:8px;position:fixed;top:50px;left:0;right:0;z-index:190;overflow-x:auto}
+.custbar::-webkit-scrollbar{display:none}
+.csq{padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;outline:none;background:#fff;flex-shrink:0;width:150px}
+.csq:focus{border-color:var(--green)}
+.cpill{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s}
+.cpill.on{background:var(--green);color:#fff;border-color:var(--green)}
+.cpill.alg{border-color:#e53935;color:#e53935}
+.cpill.on.alg{background:#e53935;border-color:#e53935;color:#fff}
+
+/* ── MAIN ── */
+.main{margin-top:94px;padding:10px;display:flex;flex-direction:column;gap:10px}
+
+/* ── VISIT CARD ── */
+.vcard{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);overflow:hidden}
+.vcard-hdr{background:var(--green);color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between}
+.vcard-hdr-title{font-size:12px;font-weight:700;letter-spacing:.04em}
+.vcard-hdr-btns{display:flex;gap:6px}
+.vhbtn{padding:4px 10px;border-radius:14px;border:1.5px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+.vhbtn:active{background:rgba(255,255,255,.2)}
+.vhbtn.danger{border-color:#ff8a80;color:#ff8a80}
+
+/* ── 3カラムレイアウト ── */
+.vbody{display:grid;grid-template-columns:280px 1fr 300px;min-height:580px}
+@media(max-width:900px){.vbody{grid-template-columns:1fr}}
+
+/* ── 左：顧客情報・施術記録 ── */
+.col-left{border-right:1px solid var(--border);overflow-y:auto;max-height:600px}
+.col-left::-webkit-scrollbar{width:4px}
+.col-left::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+
+/* 顧客基本情報（初回ページのみ） */
+.cust-info{padding:12px;border-bottom:2px solid var(--green-l)}
+.cust-title{font-size:12px;font-weight:700;color:var(--green);letter-spacing:.1em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--green-l)}
+.cinfo-row{display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #f5f5f5;min-height:28px}
+.cinfo-lbl{font-size:11px;color:var(--sub);width:72px;flex-shrink:0;font-weight:600}
+.cinfo-val{flex:1}
+.cinfo-val input{width:100%;border:none;outline:none;font-size:13px;font-family:inherit;background:transparent;color:var(--text)}
+.cinfo-val input:focus{background:#f8fffe}
+
+/* 毛髪情報テーブル */
+.hair-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+.hair-tbl td{border:1px solid #ddd;padding:4px 5px;vertical-align:middle}
+.hair-tbl .ht{background:#546e7a;color:#fff;font-weight:700;text-align:center;white-space:nowrap;font-size:10px}
+.rg{display:flex;gap:6px;flex-wrap:wrap}
+.rg label{display:flex;align-items:center;gap:2px;cursor:pointer;font-size:11px}
+.rg input{accent-color:var(--green);width:12px;height:12px}
+.cg label{display:flex;align-items:center;gap:2px;cursor:pointer;font-size:11px;font-weight:700}
+.cg input{accent-color:var(--green);width:12px;height:12px}
+.cg{display:flex;gap:6px;flex-wrap:wrap}
+
+/* 施術記録 */
+.visit-info{padding:10px 12px}
+.visit-section-title{font-size:11px;font-weight:700;color:var(--green);letter-spacing:.08em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.schptb-row{display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.schptb-cell{flex:1;text-align:center;border-right:1px solid #ddd;padding:3px 0}
+.schptb-cell:last-child{border-right:none}
+.schptb-cell label{display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;font-size:11px;font-weight:700}
+.schptb-cell input{accent-color:var(--green);width:13px;height:13px}
+.vtbl{width:100%;border-collapse:collapse;font-size:11px}
+.vtbl td{border:1px solid #e8e8e8;padding:4px 6px;vertical-align:middle}
+.vtbl .vl{background:#f5f5f5;font-weight:700;color:#546e7a;white-space:nowrap;width:64px;font-size:10px}
+.vtbl input{width:100%;border:none;outline:none;font-size:11px;font-family:inherit;background:transparent}
+.vrg{display:flex;gap:4px;flex-wrap:wrap}
+.vrg label{display:flex;align-items:center;gap:2px;cursor:pointer;font-size:11px}
+.vrg input{accent-color:var(--green);width:11px;height:11px}
+.date-input{border:none;border-bottom:2px solid var(--green-l);outline:none;font-size:14px;font-weight:700;font-family:inherit;background:transparent;color:var(--text);width:120px;text-align:right}
+.date-input:focus{border-bottom-color:var(--green)}
+
+/* ── 中央：写真＋描き込み ── */
+.col-center{border-right:1px solid var(--border);display:flex;flex-direction:column;background:#fafafa}
+.photo-slots{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px;background:#f5f5f5;flex:1}
+.photo-slot{position:relative;background:#e8e8e8;border-radius:6px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;touch-action:none}
+.photo-slot img.slot-photo{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.photo-slot canvas{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;cursor:crosshair;z-index:3}
+.photo-slot .slot-placeholder{text-align:center;color:#bbb;font-size:10px;pointer-events:none;z-index:1;padding:8px}
+.photo-slot .slot-placeholder svg{display:block;margin:0 auto 4px}
+.photo-slot.active-slot{outline:3px solid var(--green)}
+.photo-slot .slot-num{position:absolute;top:4px;left:4px;background:var(--green);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;z-index:5;pointer-events:none}
+.photo-slot .del-photo{position:absolute;top:4px;right:4px;background:rgba(229,57,53,.9);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;z-index:5;display:none;align-items:center;justify-content:center;line-height:1}
+.photo-slot:hover .del-photo{display:flex}
+.photo-area{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:#f0f0f0;min-height:200px}
+.photo-area img.uploaded-photo{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.photo-canvas{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;cursor:crosshair;z-index:3}
+.photo-placeholder{text-align:center;color:#bbb;font-size:13px;pointer-events:none;z-index:1}
+.photo-placeholder svg{display:block;margin:0 auto 8px}
+.photo-tools{background:#fff;border-top:1px solid var(--border);padding:8px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.photo-tools .cdot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:3px solid transparent;flex-shrink:0}
+.photo-tools .cdot.on{border-color:var(--green)}
+.photo-tools .ptbtn{padding:5px 9px;border-radius:14px;border:1.5px solid var(--border);background:#fff;color:#555;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.photo-tools .ptbtn.on{background:var(--green);color:#fff;border-color:var(--green)}
+.sz-slider{width:70px;cursor:pointer;accent-color:var(--green)}
+.upload-btn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:14px;border:1.5px solid var(--green);background:#fff;color:var(--green);font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+.upload-btn:hover{background:var(--green-l)}
+.file-input{display:none}
+
+/* ── 右：手書きメモ ── */
+.col-right{display:flex;flex-direction:column;background:#fffef9}
+.memo-header{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.memo-header-title{font-size:11px;font-weight:700;color:var(--green)}
+.memo-canvas-wrap{flex:1;position:relative;min-height:520px;background:#fffef9;touch-action:none}
+.memo-canvas-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%2300897b' opacity='.5'/%3E%3C/svg%3E") 8 8, crosshair}
+.memo-canvas-wrap .ruled{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.memo-tools{padding:6px 8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:5px;flex-wrap:wrap;background:#fff}
+
+/* ── PEN TOOLBAR（共通） ── */
+.pen-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.cdot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;flex-shrink:0}
+.cdot.on{border-color:#333}
+.ptbtn{padding:4px 8px;border-radius:12px;border:1px solid #ddd;background:#fff;color:#555;font-size:10px;cursor:pointer;font-family:inherit}
+.ptbtn.on{background:var(--green);color:#fff;border-color:var(--green)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;z-index:600;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* ── EMPTY ── */
+.empty{padding:60px 20px;text-align:center;color:#bbb;font-size:14px;line-height:2.4}
+
+/* ── MODAL ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:400;padding:16px}
+.md{background:#fff;border-radius:14px;width:100%;max-width:420px;padding:20px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.mdh{font-size:16px;font-weight:700;margin-bottom:14px;color:var(--green)}
+.fl{font-size:11px;color:var(--sub);margin-bottom:3px;margin-top:10px;display:block;font-weight:600}
+.fi{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none}
+.fi:focus{border-color:var(--green)}
+.mrg{display:flex;gap:14px;margin-top:6px}
+.mrg label{display:flex;align-items:center;gap:5px;font-size:14px;cursor:pointer}
+.mrg input{accent-color:var(--green)}
+.ma{display:flex;gap:8px;margin-top:16px}
+.bc{flex:1;padding:11px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:14px;cursor:pointer}
+.bs{flex:2;padding:11px;border-radius:8px;border:none;background:var(--green);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+
+/* ── SETUP ── */
+.sbox{background:#fff;border-radius:12px;padding:18px;max-width:500px;margin:8px auto;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+.sbox h3{font-size:14px;font-weight:700;margin-bottom:10px;color:var(--green)}
+.hint{background:#e0f2f1;border-left:4px solid var(--green);border-radius:4px;padding:9px 12px;font-size:11px;color:#555;line-height:1.7;margin-bottom:10px}
+.step{display:flex;gap:7px;margin-bottom:7px;font-size:11px;color:#444;line-height:1.6}
+.snum{background:var(--green);color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title">✦ Salon de SOAN｜電子カルテ</div>
+  <div class="topbar-sep"></div>
+  <button class="tb sync" id="btn-sync" onclick="syncNow()" style="display:none">☁ 同期</button>
+  <button class="tb" id="btn-nc" onclick="openNewCust()" style="display:none">＋新規顧客</button>
+  <button class="tb solid" id="btn-setup" onclick="showSetup()">⚙ 設定</button>
+</div>
+
+<!-- CUSTOMER BAR -->
+<div class="custbar" id="custbar" style="display:none">
+  <input class="csq" type="text" id="sq" placeholder="🔍 名前・電話で検索" oninput="doSearch()">
+  <div id="pills" style="display:flex;gap:6px;flex-shrink:0"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main">
+  <div id="sarea"></div>
+  <div class="empty" id="empty" style="display:none">
+    ✦<br>顧客を選択するか、新規顧客を登録してください<br>
+    <button class="tb solid" onclick="openNewCust()" style="margin-top:14px;padding:10px 22px;font-size:13px;border-radius:24px;background:var(--green);color:#fff;border:none;cursor:pointer">＋ 新規顧客登録</button>
+  </div>
+  <div id="karea"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="mroot"></div>
+
+<script>
+// ===== CONFIG =====
+var GAS_KEY = 'soan_v9';
+var GAS_URL = localStorage.getItem(GAS_KEY) || '';
+var db = {customers:[], nid:1};
+var curId = null;
+var syncTimer = null;
+
+// 描画状態（写真エリア・メモエリアで共有）
+var activeDraw = null; // {el, ctx, v, ik, hk}
+var pColor = '#111', pSz = 2, erasing = false;
+
+// ===== TOAST =====
+function toast(msg, dur) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.classList.remove('show'); }, dur||2200);
+}
+
+// ===== CLOUD =====
+async function gasReq(action, data) {
+  if(!GAS_URL) return null;
+  try {
+    var res = await fetch(GAS_URL, {method:'POST', body:JSON.stringify({action:action, data:data})});
+    return await res.json();
+  } catch(e) { return null; }
+}
+async function loadCloud() {
+  toast('☁ 読み込み中...', 4000);
+  var res = await gasReq('load');
+  if(res && res.ok && res.data) { db = res.data; toast('✅ 読み込みました'); }
+  else { loadLocal(); toast('⚠ ローカルデータを使用'); }
+  renderPills();
+}
+async function saveCloud() {
+  saveLocal();
+  if(!GAS_URL) return;
+  var res = await gasReq('save', db);
+  if(res && res.ok) toast('✅ 保存しました');
+  else toast('⚠ クラウド保存失敗（ローカルに保存済み）');
+}
+function scheduleSave() { clearTimeout(syncTimer); syncTimer = setTimeout(saveCloud, 2000); }
+function syncNow() { saveCloud(); }
+function saveLocal() {
+  try {
+    var s = JSON.parse(JSON.stringify(db));
+    if(s.customers) s.customers.forEach(function(c) {
+      if(c.visits) c.visits.forEach(function(v) {
+        v.photoInk=''; v.memoInk=''; v.photoHist=[]; v.memoHist=[];
+      });
+    });
+    localStorage.setItem('soan_v9', JSON.stringify(s));
+  } catch(e) {}
+}
+function loadLocal() {
+  try { var s=localStorage.getItem('soan_v9'); if(s) db=JSON.parse(s); } catch(e) {}
+}
+
+// ===== HELPERS =====
+function gc(id) { return db.customers.find(function(c){ return c.id===id; }); }
+function ensureV(c, vi) {
+  if(!c.visits) c.visits=[];
+  while(c.visits.length<=vi) c.visits.push({
+    menu:{}, len:'S', damage:'無', cut:'有', charge:'', drug:'', dyeTime:'', trTime:'', retail:'', price:'', note:'',
+    date:'', photo:'', photoInk:'', photoHist:[], memoInk:'', memoHist:[]
+  });
+}
+
+// ===== SEARCH / PILLS =====
+function doSearch() { renderPills(document.getElementById('sq').value.trim().toLowerCase()); }
+function renderPills(q) {
+  q = q||'';
+  var list = db.customers;
+  if(q) list = list.filter(function(c){
+    return c.name.toLowerCase().indexOf(q)>=0 || (c.tel||'').replace(/-/g,'').indexOf(q.replace(/-/g,''))>=0;
+  });
+  var el = document.getElementById('pills'); el.innerHTML='';
+  list.forEach(function(c) {
+    var sp = document.createElement('span');
+    sp.className='cpill'+(c.id===curId?' on':'')+(c.allergy&&c.allergy!=='無'?' alg':'');
+    sp.textContent = c.name;
+    sp.onclick = function(){ selCust(c.id); };
+    el.appendChild(sp);
+  });
+}
+function selCust(id) {
+  curId=id; activeDraw=null;
+  renderPills(document.getElementById('sq').value.trim().toLowerCase());
+  renderKarte();
+}
+
+// ===== DRAW ENGINE =====
+function initDrawCanvas(cvEl, v, inkKey, histKey, bgImgEl) {
+  var drawing=false, lx=0, ly=0;
+  function resize() {
+    var w=cvEl.parentElement.offsetWidth, h=cvEl.parentElement.offsetHeight;
+    if(!w||!h) return;
+    var prev = v[inkKey]||'';
+    cvEl.width=w; cvEl.height=h;
+    var ctx=cvEl.getContext('2d');
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    if(prev){ var pi=new Image(); pi.onload=function(){ctx.drawImage(pi,0,0,w,h);}; pi.src=prev; }
+  }
+  setTimeout(resize,60);
+  window.addEventListener('resize', resize);
+
+  function gp(e) {
+    var r=cvEl.getBoundingClientRect(), scx=cvEl.width/r.width, scy=cvEl.height/r.height;
+    var s=e.touches?e.touches[0]:e;
+    return[(s.clientX-r.left)*scx,(s.clientY-r.top)*scy];
+  }
+  function sd(e) {
+    e.preventDefault(); drawing=true;
+    var ctx=cvEl.getContext('2d');
+    activeDraw={el:cvEl,ctx:ctx,v:v,ik:inkKey,hk:histKey};
+    if(!v[histKey]) v[histKey]=[];
+    v[histKey]=v[histKey].slice(-19);
+    v[histKey].push(cvEl.toDataURL());
+    var p=gp(e); lx=p[0]; ly=p[1];
+  }
+  function dr(e) {
+    if(!drawing) return; e.preventDefault();
+    var ctx=cvEl.getContext('2d'), p=gp(e), x=p[0], y=p[1];
+    ctx.globalCompositeOperation=erasing?'destination-out':'source-over';
+    ctx.strokeStyle=erasing?'rgba(0,0,0,1)':pColor;
+    ctx.lineWidth=erasing?pSz*5:pSz;
+    ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.stroke();
+    lx=x; ly=y;
+  }
+  function ed() {
+    if(!drawing) return; drawing=false;
+    v[inkKey]=cvEl.toDataURL(); scheduleSave();
+  }
+  cvEl.addEventListener('mousedown',sd); cvEl.addEventListener('mousemove',dr);
+  cvEl.addEventListener('mouseup',ed); cvEl.addEventListener('mouseleave',ed);
+  cvEl.addEventListener('touchstart',sd,{passive:false});
+  cvEl.addEventListener('touchmove',dr,{passive:false});
+  cvEl.addEventListener('touchend',ed);
+}
+
+// グローバルペン操作
+function setColor(dot) {
+  erasing=false;
+  document.querySelectorAll('.cdot').forEach(function(d){d.classList.remove('on');});
+  dot.classList.add('on');
+  pColor = dot.dataset.c;
+  document.querySelectorAll('.ptbtn.eraser').forEach(function(b){b.classList.remove('on');});
+}
+function toggleEraser(btn) {
+  erasing=!erasing; btn.classList.toggle('on',erasing);
+}
+function doUndo() {
+  if(!activeDraw) return;
+  var d=activeDraw, hist=d.v[d.hk]||[];
+  if(!hist.length) return;
+  var prev=hist.pop(); d.v[d.hk]=hist;
+  var img=new Image(); img.onload=function(){d.ctx.clearRect(0,0,d.el.width,d.el.height);d.ctx.drawImage(img,0,0);}; img.src=prev;
+  d.v[d.ik]=prev; scheduleSave();
+}
+function doClearActive(confirmMsg) {
+  if(!activeDraw) { toast('先にキャンバスをタップしてください'); return; }
+  if(!confirm(confirmMsg||'書き込みを消しますか？')) return;
+  var d=activeDraw;
+  if(!d.v[d.hk]) d.v[d.hk]=[];
+  d.v[d.hk].push(d.el.toDataURL());
+  d.ctx.clearRect(0,0,d.el.width,d.el.height);
+  d.v[d.ik]=''; scheduleSave();
+}
+
+function today() {
+  var d=new Date();
+  return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0');
+}
+
+// ===== RENDER KARTE =====
+function renderKarte() {
+  var c=gc(curId); if(!c) return;
+  document.getElementById('empty').style.display='none';
+  var ka=document.getElementById('karea');
+  ka.innerHTML='';
+  activeDraw=null;
+
+  // 顧客情報カード（先頭固定）
+  ka.appendChild(makeCustCard(c));
+
+  // 来店ページ（施術ごと）
+  if(!c.visits||!c.visits.length) ensureV(c,0);
+  c.visits.forEach(function(v,i){ ka.appendChild(makeVisitCard(c,i)); });
+
+  // ＋ページ追加ボタン
+  var addBtn=document.createElement('div');
+  addBtn.style.cssText='text-align:center;padding:16px';
+  var btn=document.createElement('button');
+  btn.style.cssText='padding:12px 28px;border-radius:24px;border:2px dashed var(--green);background:#fff;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
+  btn.textContent='＋ 来店記録を追加';
+  btn.onclick=function(){ addVisitPage(c); };
+  addBtn.appendChild(btn); ka.appendChild(addBtn);
+}
+
+function addVisitPage(c) {
+  ensureV(c, c.visits.length);
+  scheduleSave(); renderKarte();
+  setTimeout(function(){
+    var cards=document.querySelectorAll('.vcard');
+    if(cards.length) cards[cards.length-1].scrollIntoView({behavior:'smooth'});
+  },200);
+  toast('来店記録を追加しました');
+}
+
+// ===== 顧客情報カード =====
+function makeCustCard(c) {
+  var card=document.createElement('div'); card.className='vcard';
+  var hdr=document.createElement('div'); hdr.className='vcard-hdr';
+  hdr.innerHTML='<div class="vcard-hdr-title">📋 顧客基本情報</div>';
+  card.appendChild(hdr);
+
+  var body=document.createElement('div'); body.style.cssText='padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px';
+  var left=document.createElement('div');
+  var right=document.createElement('div');
+
+  function mkI(lbl,f,type,ph) {
+    var row=document.createElement('div'); row.className='cinfo-row';
+    var l=document.createElement('div'); l.className='cinfo-lbl'; l.textContent=lbl;
+    var v=document.createElement('div'); v.className='cinfo-val';
+    var inp=document.createElement('input'); inp.type=type||'text'; inp.value=c[f]||''; if(ph)inp.placeholder=ph;
+    inp.onchange=(function(field){return function(){c[field]=this.value;scheduleSave();if(field==='name')renderPills();}})(f);
+    v.appendChild(inp); row.appendChild(l); row.appendChild(v);
+    return row;
+  }
+  left.appendChild(mkI('フリガナ','kana','text','ヤマダ ハナコ'));
+  left.appendChild(mkI('No. / Name','name','text','山田 花子'));
+  left.appendChild(mkI('Address','addr','text'));
+  left.appendChild(mkI('Tel','tel','tel','090-0000-0000'));
+  left.appendChild(mkI('Mail','mail','email'));
+
+  // Birthday
+  var bdRow=document.createElement('div'); bdRow.className='cinfo-row';
+  var bdL=document.createElement('div'); bdL.className='cinfo-lbl'; bdL.textContent='Birthday';
+  var bdV=document.createElement('div'); bdV.className='cinfo-val'; bdV.style.cssText='display:flex;gap:4px;align-items:center';
+  ['bdayY','bdayM','bdayD'].forEach(function(f,i){
+    var inp=document.createElement('input'); inp.type='text'; inp.value=c[f]||'';
+    inp.style.cssText='width:'+(i===0?'50px':'32px')+';border:none;border-bottom:1px solid #ddd;outline:none;font-size:13px;font-family:inherit;background:transparent;text-align:center';
+    inp.placeholder=['年','月','日'][i];
+    inp.onchange=(function(field){return function(){c[field]=this.value;scheduleSave();}})(f);
+    bdV.appendChild(inp);
+    if(i<2){var s=document.createElement('span');s.textContent='/';s.style.color='#999';bdV.appendChild(s);}
+  });
+  bdRow.appendChild(bdL); bdRow.appendChild(bdV); left.appendChild(bdRow);
+
+  // 右側：毛髪情報
+  var rtitle=document.createElement('div'); rtitle.className='cust-title'; rtitle.style.marginBottom='8px'; rtitle.textContent='毛髪・体質情報';
+  right.appendChild(rtitle);
+
+  function mkRg(lbl,field,opts,def) {
+    var row=document.createElement('div'); row.className='cinfo-row';
+    var l=document.createElement('div'); l.className='cinfo-lbl'; l.textContent=lbl;
+    var v=document.createElement('div'); v.className='cinfo-val';
+    var rg=document.createElement('div'); rg.className='rg';
+    opts.forEach(function(opt){
+      var lbl2=document.createElement('label');
+      var r=document.createElement('input'); r.type='radio'; r.name=field+c.id; r.value=opt;
+      if(c[field]===opt||(c[field]==null&&opt===def)) r.checked=true;
+      r.onchange=(function(fi,v2){return function(){if(this.checked){c[fi]=v2;scheduleSave();}}})(field,opt);
+      lbl2.appendChild(r); lbl2.appendChild(document.createTextNode(opt));
+      rg.appendChild(lbl2);
+    });
+    v.appendChild(rg); row.appendChild(l); row.appendChild(v);
+    return row;
+  }
+  right.appendChild(mkRg('アレルギー','allergy',['無','あり'],'無'));
+  right.appendChild(mkRg('太　さ','thick',['太い','普通','細い'],'普通'));
+  right.appendChild(mkRg('硬　さ','hard',['硬い','普通','軟'],'普通'));
+  right.appendChild(mkRg('毛　量','amount',['多い','普通','少ない'],'普通'));
+  right.appendChild(mkRg('乾燥性','oil',['乾性','普通','油性'],'普通'));
+
+  // 薬液指定
+  var dRow=document.createElement('div'); dRow.className='cinfo-row';
+  var dL=document.createElement('div'); dL.className='cinfo-lbl'; dL.textContent='薬液指定';
+  var dV=document.createElement('div'); dV.className='cinfo-val';
+  var dI=document.createElement('input'); dI.value=c.drugSpec||''; dI.placeholder='フリー入力';
+  dI.onchange=function(){c.drugSpec=this.value;scheduleSave();};
+  dV.appendChild(dI); dRow.appendChild(dL); dRow.appendChild(dV); right.appendChild(dRow);
+
+  body.appendChild(left); body.appendChild(right);
+  card.appendChild(body);
+  return card;
+}
+
+// ===== 来店記録カード（3カラム） =====
+function makeVisitCard(c, vi) {
+  ensureV(c,vi);
+  var v=c.visits[vi];
+
+  var card=document.createElement('div'); card.className='vcard';
+
+  // ヘッダー
+  var hdr=document.createElement('div'); hdr.className='vcard-hdr';
+  var htitle=document.createElement('div'); htitle.className='vcard-hdr-title';
+  htitle.textContent='来店記録 '+(vi+1)+'回目';
+  var hbtns=document.createElement('div'); hbtns.className='vcard-hdr-btns';
+
+  // 日付入力
+  var dateInp=document.createElement('input'); dateInp.className='date-input';
+  dateInp.value=v.date||today(); dateInp.placeholder=today();
+  dateInp.style.cssText='border:none;border-bottom:2px solid rgba(255,255,255,.5);outline:none;font-size:13px;font-weight:700;font-family:inherit;background:transparent;color:#fff;width:110px;text-align:right;margin-right:8px';
+  dateInp.onchange=function(){v.date=this.value;scheduleSave();};
+  hbtns.appendChild(dateInp);
+
+  if(vi>0){
+    var delBtn=document.createElement('button'); delBtn.className='vhbtn danger';
+    delBtn.textContent='削除';
+    delBtn.onclick=(function(vi2){return function(){
+      if(!confirm('この来店記録を削除しますか？')) return;
+      c.visits.splice(vi2,1);
+      scheduleSave(); renderKarte();
+    };})(vi);
+    hbtns.appendChild(delBtn);
+  }
+  hdr.appendChild(htitle); hdr.appendChild(hbtns);
+  card.appendChild(hdr);
+
+  // ボディ 3カラム
+  var body=document.createElement('div'); body.className='vbody';
+
+  // ── 左カラム：施術記録 ──
+  var left=document.createElement('div'); left.className='col-left';
+  var vinfo=document.createElement('div'); vinfo.className='visit-info';
+
+  // SCHPTB
+  var stitle=document.createElement('div'); stitle.className='visit-section-title';
+  stitle.innerHTML='<span style="font-size:10px;color:#888">S…シャンプー C…カット H…ヘアカラー P…パーマ T…トリートメント B…ブロー</span>';
+  vinfo.appendChild(stitle);
+
+  var schptb=document.createElement('div'); schptb.className='schptb-row';
+  ['S','C','H','P','T','B'].forEach(function(m){
+    var cell=document.createElement('div'); cell.className='schptb-cell';
+    var lbl=document.createElement('label');
+    var ck=document.createElement('input'); ck.type='checkbox'; ck.checked=!!(v.menu&&v.menu[m]);
+    ck.onchange=(function(m2){return function(){if(!v.menu)v.menu={};v.menu[m2]=this.checked;scheduleSave();}})(m);
+    lbl.appendChild(ck); lbl.appendChild(document.createTextNode(m));
+    cell.appendChild(lbl); schptb.appendChild(cell);
+  });
+  vinfo.appendChild(schptb);
+
+  // 施術テーブル
+  var tbl=document.createElement('table'); tbl.className='vtbl';
+  function addVRow(lbl,content) {
+    var tr=document.createElement('tr');
+    var td1=document.createElement('td'); td1.className='vl'; td1.textContent=lbl;
+    var td2=document.createElement('td'); td2.appendChild(content);
+    tr.appendChild(td1); tr.appendChild(td2); tbl.appendChild(tr);
+  }
+  function vInp(field,ph,type) {
+    var inp=document.createElement('input'); inp.type=type||'text'; inp.value=v[field]||''; if(ph)inp.placeholder=ph;
+    inp.onchange=(function(f){return function(){v[f]=this.value;scheduleSave();}})(field);
+    return inp;
+  }
+  function vRg(field,opts,def) {
+    var d=document.createElement('div'); d.className='vrg';
+    opts.forEach(function(opt){
+      var l=document.createElement('label');
+      var r=document.createElement('input'); r.type='radio'; r.name=field+vi+c.id; r.value=opt;
+      if(v[field]===opt||(v[field]==null&&opt===def)) r.checked=true;
+      r.onchange=(function(fi,vl){return function(){if(this.checked){v[fi]=vl;scheduleSave();}}})(field,opt);
+      l.appendChild(r); l.appendChild(document.createTextNode(opt));
+      d.appendChild(l);
+    });
+    return d;
+  }
+
+  addVRow('長　さ', vRg('len',['L','SL','S'],'S'));
+  addVRow('ダメージ', vRg('damage',['全体','毛先','枝毛','無'],'無'));
+  addVRow('カット', vRg('cut',['有','無'],'有'));
+  addVRow('担　当', vInp('charge','スタッフ名'));
+  addVRow('薬　品', vInp('drug','例: 6Nア'));
+  // タイム行
+  var tRow=document.createElement('div'); tRow.style.cssText='display:flex;align-items:center;gap:3px';
+  var ti1=vInp('dyeTime','0','number'); ti1.style.width='50px';
+  tRow.appendChild(ti1); tRow.appendChild(document.createTextNode('分'));
+  addVRow('タイム', tRow);
+  // ヘアダイ
+  var hRow=document.createElement('div'); hRow.style.cssText='display:flex;align-items:center;gap:3px';
+  var hi1=vInp('trTime','0','number'); hi1.style.width='50px';
+  hRow.appendChild(hi1); hRow.appendChild(document.createTextNode('分'));
+  addVRow('ヘアダイ', hRow);
+
+  vinfo.appendChild(tbl);
+
+  // 店販・料金
+  var sep=document.createElement('div'); sep.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:6px;border:1px solid #e8e8e8;border-radius:4px;overflow:hidden';
+  ['retail','price'].forEach(function(f,i){
+    var cell=document.createElement('div'); cell.style.cssText='padding:5px;background:'+(i%2===0?'#f5f5f5':'#fff');
+    var l=document.createElement('div'); l.style.cssText='font-size:10px;color:#999;font-weight:700;margin-bottom:2px'; l.textContent=['店　販','料　金'][i];
+    var inp=vInp(f,'',i===1?'number':'text'); inp.style.width='100%';
+    cell.appendChild(l); cell.appendChild(inp); sep.appendChild(cell);
+  });
+  vinfo.appendChild(sep);
+
+  // メモテキスト
+  var memoLabel=document.createElement('div'); memoLabel.style.cssText='font-size:10px;color:#999;font-weight:700;margin-top:8px;margin-bottom:3px'; memoLabel.textContent='申し送り・メモ（テキスト）';
+  vinfo.appendChild(memoLabel);
+  var memoTA=document.createElement('textarea'); memoTA.style.cssText='width:100%;border:1px solid #e8e8e8;border-radius:4px;font-size:12px;font-family:inherit;padding:5px;outline:none;resize:vertical;min-height:52px';
+  memoTA.value=v.note||'';
+  memoTA.onchange=function(){v.note=this.value;scheduleSave();};
+  vinfo.appendChild(memoTA);
+
+  left.appendChild(vinfo);
+
+  // ── 中央カラム：写真＋描き込み ──
+  var center=document.createElement('div'); center.className='col-center';
+
+  // 写真3スロット
+  if(!v.photos) v.photos=[null,null,null];
+  if(!v.photoInks) v.photoInks=['','',''];
+  if(!v.photoHists) v.photoHists=[[],[],[]];
+
+  var photoSlots=document.createElement('div'); photoSlots.className='photo-slots';
+  var activeSlotIdx=0;
+
+  for(var si=0;si<3;si++){
+    (function(idx){
+      var slot=document.createElement('div'); slot.className='photo-slot';
+
+      // スロット番号
+      var snum=document.createElement('div'); snum.className='slot-num';
+      snum.textContent=['Before','After','メモ'][idx];
+      slot.appendChild(snum);
+
+      // プレースホルダー
+      var ph=document.createElement('div'); ph.className='slot-placeholder';
+      ph.innerHTML='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>タップで写真追加';
+      if(v.photos[idx]) ph.style.display='none';
+      slot.appendChild(ph);
+
+      // 写真
+      if(v.photos[idx]){
+        var pimg=document.createElement('img'); pimg.className='slot-photo'; pimg.src=v.photos[idx];
+        slot.appendChild(pimg);
+      }
+
+      // 削除ボタン
+      var delBtn=document.createElement('button'); delBtn.className='del-photo'; delBtn.textContent='×';
+      delBtn.onclick=function(e){
+        e.stopPropagation();
+        if(!confirm('写真を削除しますか？')) return;
+        v.photos[idx]=null; v.photoInks[idx]=''; v.photoHists[idx]=[];
+        var si2=slot.querySelector('img.slot-photo');
+        if(si2) slot.removeChild(si2);
+        ph.style.display='flex';
+        var cv2=slot.querySelector('canvas');
+        if(cv2) cv2.getContext('2d').clearRect(0,0,cv2.width,cv2.height);
+        scheduleSave();
+      };
+      slot.appendChild(delBtn);
+
+      // キャンバス
+      var cv=document.createElement('canvas');
+      slot.appendChild(cv);
+
+      // スロットタップで選択
+      slot.onclick=function(e){
+        if(e.target===delBtn) return;
+        document.querySelectorAll('.photo-slot').forEach(function(s){s.classList.remove('active-slot');});
+        slot.classList.add('active-slot');
+        activeSlotIdx=idx;
+        // キャンバスをactiveDraw対象にする（再initは不要、既存のイベントで動く）
+      };
+
+      // 初期化
+      setTimeout(function(){
+        var w=slot.offsetWidth, h=slot.offsetHeight;
+        if(w&&h){
+          cv.width=w; cv.height=h;
+          var ctx=cv.getContext('2d');
+          ctx.lineCap='round'; ctx.lineJoin='round';
+          if(v.photoInks[idx]){var pi=new Image();pi.onload=function(){ctx.drawImage(pi,0,0,w,h);};pi.src=v.photoInks[idx];}
+        }
+        function resize2(){
+          var w2=slot.offsetWidth,h2=slot.offsetHeight;
+          if(!w2||!h2)return;
+          var prev=v.photoInks[idx]||'';
+          cv.width=w2;cv.height=h2;
+          var ctx2=cv.getContext('2d');ctx2.lineCap='round';ctx2.lineJoin='round';
+          if(prev){var pi2=new Image();pi2.onload=function(){ctx2.drawImage(pi2,0,0,w2,h2);};pi2.src=prev;}
+        }
+        window.addEventListener('resize',resize2);
+
+        var drawing=false,lx2=0,ly2=0;
+        function gp2(e){var r=cv.getBoundingClientRect(),scx=cv.width/r.width,scy=cv.height/r.height;var s=e.touches?e.touches[0]:e;return[(s.clientX-r.left)*scx,(s.clientY-r.top)*scy];}
+        function sd2(e){e.preventDefault();drawing=true;activeDraw={el:cv,ctx:cv.getContext('2d'),v:v,ik:'photoInks_'+idx,hk:'photoHists_'+idx};v['photoInks_'+idx]=v.photoInks[idx];v['photoHists_'+idx]=v.photoHists[idx];if(!v.photoHists[idx])v.photoHists[idx]=[];v.photoHists[idx]=v.photoHists[idx].slice(-19);v.photoHists[idx].push(cv.toDataURL());var p=gp2(e);lx2=p[0];ly2=p[1];}
+        function dr2(e){if(!drawing)return;e.preventDefault();var ctx3=cv.getContext('2d'),p=gp2(e),x=p[0],y=p[1];ctx3.globalCompositeOperation=erasing?'destination-out':'source-over';ctx3.strokeStyle=erasing?'rgba(0,0,0,1)':pColor;ctx3.lineWidth=erasing?pSz*5:pSz;ctx3.beginPath();ctx3.moveTo(lx2,ly2);ctx3.lineTo(x,y);ctx3.stroke();lx2=x;ly2=y;}
+        function ed2(){if(!drawing)return;drawing=false;v.photoInks[idx]=cv.toDataURL();scheduleSave();}
+        cv.addEventListener('mousedown',sd2);cv.addEventListener('mousemove',dr2);cv.addEventListener('mouseup',ed2);cv.addEventListener('mouseleave',ed2);
+        cv.addEventListener('touchstart',sd2,{passive:false});cv.addEventListener('touchmove',dr2,{passive:false});cv.addEventListener('touchend',ed2);
+      },100);
+
+      photoSlots.appendChild(slot);
+    })(si);
+  }
+  center.appendChild(photoSlots);
+
+  // 写真ツールバー
+  var pTools=document.createElement('div'); pTools.className='photo-tools';
+
+  // 写真アップロードボタン（選択中スロットに追加）
+  var upBtn=document.createElement('label'); upBtn.className='upload-btn';
+  upBtn.innerHTML='📷 写真追加（選択中スロット）';
+  var fileInp=document.createElement('input'); fileInp.type='file'; fileInp.accept='image/*'; fileInp.className='file-input';
+  fileInp.onchange=function(){
+    var file=this.files[0]; if(!file) return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      if(!v.photos) v.photos=[null,null,null];
+      v.photos[activeSlotIdx]=e.target.result;
+      var slots=photoSlots.querySelectorAll('.photo-slot');
+      var slot=slots[activeSlotIdx];
+      var existing=slot.querySelector('img.slot-photo');
+      if(existing){existing.src=e.target.result;}
+      else{var ni=document.createElement('img');ni.className='slot-photo';ni.src=e.target.result;slot.insertBefore(ni,slot.querySelector('canvas'));}
+      var ph2=slot.querySelector('.slot-placeholder'); if(ph2)ph2.style.display='none';
+      scheduleSave(); toast('写真を追加しました（'+(activeSlotIdx+1)+'枚目）');
+    };
+    reader.readAsDataURL(file);
+  };
+  upBtn.appendChild(fileInp);
+  pTools.appendChild(upBtn);
+
+  // ペンツール（写真エリア用）
+  var penBar=document.createElement('div'); penBar.className='pen-bar';
+  ['#111','#e53935','#1e88e5','#43a047','#fb8c00','#ffffff'].forEach(function(col,i){
+    var dot=document.createElement('div'); dot.className='cdot'+(i===0?' on':''); dot.style.background=col; dot.dataset.c=col;
+    dot.onclick=function(){ setColor(this); };
+    penBar.appendChild(dot);
+  });
+  var erBtn=document.createElement('button'); erBtn.className='ptbtn eraser'; erBtn.textContent='消しゴム';
+  erBtn.onclick=function(){ toggleEraser(this); };
+  penBar.appendChild(erBtn);
+  var szLabel=document.createElement('span'); szLabel.style.cssText='font-size:10px;color:#999'; szLabel.textContent='太さ';
+  var szSlider=document.createElement('input'); szSlider.type='range'; szSlider.min=1; szSlider.max=20; szSlider.value=2; szSlider.className='sz-slider';
+  szSlider.oninput=function(){pSz=+this.value;};
+  penBar.appendChild(szLabel); penBar.appendChild(szSlider);
+  var undoBtn=document.createElement('button'); undoBtn.className='ptbtn'; undoBtn.textContent='↩ 戻す';
+  undoBtn.onclick=doUndo;
+  var clearBtn=document.createElement('button'); clearBtn.className='ptbtn'; clearBtn.textContent='🗑 クリア';
+  clearBtn.onclick=function(){ doClearActive('写真への書き込みを消しますか？'); };
+  penBar.appendChild(undoBtn); penBar.appendChild(clearBtn);
+  pTools.appendChild(penBar);
+  center.appendChild(pTools);
+
+  // ── 右カラム：手書きメモ ──
+  var right=document.createElement('div'); right.className='col-right';
+
+  var memoHdr=document.createElement('div'); memoHdr.className='memo-header';
+  var mHdrTitle=document.createElement('div'); mHdrTitle.className='memo-header-title'; mHdrTitle.textContent='✏ 手書きメモ（タッチペン）';
+  memoHdr.appendChild(mHdrTitle);
+  right.appendChild(memoHdr);
+
+  // 罫線付きキャンバス
+  var memoWrap=document.createElement('div'); memoWrap.className='memo-canvas-wrap';
+
+  // 罫線（背景）
+  var ruledDiv=document.createElement('div'); ruledDiv.className='ruled';
+  ruledDiv.style.cssText='background:repeating-linear-gradient(to bottom,transparent,transparent 27px,#e8f5e9 27px,#e8f5e9 28px);z-index:0';
+  memoWrap.appendChild(ruledDiv);
+
+  var memoCv=document.createElement('canvas');
+  memoCv.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;cursor:crosshair;z-index:2';
+  memoWrap.appendChild(memoCv);
+  setTimeout(function(){ initDrawCanvas(memoCv,v,'memoInk','memoHist',null); },100);
+
+  right.appendChild(memoWrap);
+
+  // メモツールバー（右）
+  var memoTools=document.createElement('div'); memoTools.className='memo-tools';
+  var mPenBar=document.createElement('div'); mPenBar.className='pen-bar';
+  ['#111','#e53935','#1e88e5','#43a047','#fb8c00'].forEach(function(col,i){
+    var dot=document.createElement('div'); dot.className='cdot'+(i===0?' on':''); dot.style.background=col; dot.dataset.c=col;
+    dot.onclick=function(){ setColor(this); };
+    mPenBar.appendChild(dot);
+  });
+  var mErBtn=document.createElement('button'); mErBtn.className='ptbtn eraser'; mErBtn.textContent='消しゴム';
+  mErBtn.onclick=function(){ toggleEraser(this); };
+  var mUndoBtn=document.createElement('button'); mUndoBtn.className='ptbtn'; mUndoBtn.textContent='↩ 戻す';
+  mUndoBtn.onclick=doUndo;
+  var mClearBtn=document.createElement('button'); mClearBtn.className='ptbtn'; mClearBtn.textContent='🗑';
+  mClearBtn.onclick=function(){ doClearActive('メモを消しますか？'); };
+  mPenBar.appendChild(mErBtn); mPenBar.appendChild(mUndoBtn); mPenBar.appendChild(mClearBtn);
+  memoTools.appendChild(mPenBar);
+  right.appendChild(memoTools);
+
+  body.appendChild(left); body.appendChild(center); body.appendChild(right);
+  card.appendChild(body);
+  return card;
+}
+
+// ===== NEW CUSTOMER =====
+function openNewCust() {
+  var mr=document.getElementById('mroot'); mr.innerHTML='';
+  var mo=document.createElement('div'); mo.className='mo';
+  mo.onclick=function(e){if(e.target===mo)closeM();};
+  var md=document.createElement('div'); md.className='md';
+  md.innerHTML='<div class="mdh">＋ 新規顧客登録</div>';
+  function addFi(id,lbl,type,ph) {
+    var l=document.createElement('label'); l.className='fl'; l.textContent=lbl;
+    var inp=document.createElement('input'); inp.className='fi'; inp.id=id; inp.type=type||'text'; if(ph)inp.placeholder=ph;
+    md.appendChild(l); md.appendChild(inp);
+  }
+  addFi('nc-n','お名前 *','text','山田 花子');
+  addFi('nc-k','フリガナ','text','ヤマダ ハナコ');
+  addFi('nc-t','電話番号','tel','090-0000-0000');
+  addFi('nc-m','メール','email');
+  addFi('nc-a','住所','text');
+  var al=document.createElement('label'); al.className='fl'; al.textContent='アレルギー'; md.appendChild(al);
+  var rg=document.createElement('div'); rg.className='mrg';
+  ['無','あり'].forEach(function(v,i){
+    var l=document.createElement('label'); if(i===1)l.style.color='#e53935';
+    var r=document.createElement('input'); r.type='radio'; r.name='nalg'; r.value=v; if(i===0)r.checked=true;
+    l.appendChild(r); l.appendChild(document.createTextNode(' '+v)); rg.appendChild(l);
+  });
+  md.appendChild(rg);
+  var ma=document.createElement('div'); ma.className='ma';
+  var bc=document.createElement('button'); bc.className='bc'; bc.textContent='キャンセル'; bc.onclick=closeM;
+  var bs=document.createElement('button'); bs.className='bs'; bs.textContent='登録する';
+  bs.onclick=function(){
+    var name=(document.getElementById('nc-n').value||'').trim();
+    if(!name){alert('お名前を入力してください');return;}
+    var alg=document.querySelector('input[name="nalg"]:checked').value;
+    var id=db.nid++;
+    db.customers.push({
+      id:id,name:name,no:String(id).padStart(3,'0'),
+      kana:document.getElementById('nc-k').value,
+      tel:document.getElementById('nc-t').value,
+      mail:document.getElementById('nc-m').value,
+      addr:document.getElementById('nc-a').value,
+      allergy:alg,thick:'普通',hard:'普通',amount:'普通',oil:'普通',
+      damage:'無',cut:'有',menu:{},visits:[]
+    });
+    scheduleSave(); curId=id; closeM(); renderPills(); renderKarte();
+  };
+  ma.appendChild(bc); ma.appendChild(bs); md.appendChild(ma);
+  mo.appendChild(md); mr.appendChild(mo);
+  setTimeout(function(){document.getElementById('nc-n').focus();},100);
+}
+function closeM(){document.getElementById('mroot').innerHTML='';}
+
+// ===== SETUP =====
+var GAS_CODE='const FILE_NAME="SalonKarte_Data.json";function doPost(e){const d=JSON.parse(e.postData.contents);if(d.action==="save")return r(save(d.data));if(d.action==="load")return r(load());return r({ok:false})}function doGet(){return r({ok:true})}function r(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON)}function save(db){try{const f=DriveApp.getRootFolder().getFilesByName(FILE_NAME);const j=JSON.stringify(db);if(f.hasNext()){f.next().setContent(j);}else{DriveApp.getRootFolder().createFile(FILE_NAME,j,MimeType.PLAIN_TEXT);}return{ok:true};}catch(e){return{ok:false,error:e.toString()};}}function load(){try{const f=DriveApp.getRootFolder().getFilesByName(FILE_NAME);if(f.hasNext()){return{ok:true,data:JSON.parse(f.next().getBlob().getDataAsString())};}return{ok:true,data:null};}catch(e){return{ok:false,error:e.toString()};}}';
+
+function showSetup(){
+  var sa=document.getElementById('sarea'); sa.innerHTML='';
+  var box=document.createElement('div'); box.className='sbox';
+  box.innerHTML='<h3>☁ クラウド保存の初期設定</h3><div class="hint">Googleアカウントがあれば無料。一度設定すれば全デバイスで共有できます。</div>'
+  +'<div class="step"><div class="snum">1</div><div><a href="https://script.google.com" target="_blank" style="color:var(--green)">script.google.com</a> を開き「新しいプロジェクト」をクリック</div></div>'
+  +'<div class="step"><div class="snum">2</div><div>下のボタンでコードをコピーしてエディタに貼り付け・保存</div></div>'
+  +'<div class="step"><div class="snum">3</div><div>「デプロイ」→「新しいデプロイ」→ウェブアプリ→アクセス：全員→デプロイ</div></div>'
+  +'<div class="step"><div class="snum">4</div><div>表示されたURLを下に入力して「接続する」</div></div>';
+  var cpBtn=document.createElement('button');
+  cpBtn.style.cssText='margin-bottom:8px;padding:8px 14px;font-size:12px;border-radius:20px;cursor:pointer;background:var(--green);color:#fff;border:none;font-weight:700';
+  cpBtn.textContent='📋 GASコードをコピー';
+  cpBtn.onclick=function(){
+    try{navigator.clipboard.writeText(GAS_CODE).then(function(){toast('✅ コピーしました');});}
+    catch(e){var t=document.createElement('textarea');t.value=GAS_CODE;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);toast('✅ コピーしました');}
+  };
+  box.appendChild(cpBtn);
+  var lbl=document.createElement('label'); lbl.className='fl'; lbl.textContent='ウェブアプリのURL'; box.appendChild(lbl);
+  var inp=document.createElement('input'); inp.className='fi'; inp.id='gas-in'; inp.value=GAS_URL; inp.placeholder='https://script.google.com/macros/s/...';
+  inp.style.marginBottom='8px'; box.appendChild(inp);
+  var btns=document.createElement('div'); btns.style.cssText='display:flex;gap:7px';
+  var conn=document.createElement('button');
+  conn.style.cssText='flex:2;padding:10px;border-radius:8px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer';
+  conn.textContent='接続する';
+  conn.onclick=async function(){
+    var url=(document.getElementById('gas-in').value||'').trim();
+    if(!url){alert('URLを入力してください');return;}
+    GAS_URL=url; localStorage.setItem(GAS_KEY,url);
+    sa.innerHTML=''; showApp(); await loadCloud();
+  };
+  btns.appendChild(conn);
+  if(GAS_URL){
+    var clsBtn=document.createElement('button');
+    clsBtn.style.cssText='flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;cursor:pointer;background:#fff';
+    clsBtn.textContent='閉じる';
+    clsBtn.onclick=function(){sa.innerHTML='';};
+    btns.appendChild(clsBtn);
+  }
+  box.appendChild(btns);
+  sa.appendChild(box);
+}
+
+function showApp(){
+  document.getElementById('btn-setup').style.display='none';
+  document.getElementById('btn-sync').style.display='inline-block';
+  document.getElementById('btn-nc').style.display='inline-block';
+  document.getElementById('custbar').style.display='flex';
+  document.getElementById('empty').style.display='block';
+}
+
+// ===== BOOT =====
+(async function(){
+  if(GAS_URL){ showApp(); await loadCloud(); }
+  else showSetup();
+})();
+</script>
+</body>
+</html>
